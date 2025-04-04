@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Glitching Progress Bar</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./js/three/three.module.js",
+          "three/addons/": "./js/three/addons/"
+        }
+      }
+    </script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        canvas { display: block; } /* Use canvas instead of body for WebGL */
+    </style>
+</head>
+<body>
+    <!-- Removed the importmap -->
+    <script type="module">
+        console.log("[WebView] Script module started."); // Log start
+
+        // Function to notify GJS environment (Moved here)
+        function notifyGjsReady() {
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.gjsCallback) {
+                console.log("[WebView] Sending 'ready' message to GJS.");
+                window.webkit.messageHandlers.gjsCallback.postMessage('ready');
+            } else {
+                console.error("[WebView] Cannot find webkit.messageHandlers.gjsCallback to send 'ready' message.");
+                // Fallback for testing in a regular browser
+                // setTimeout(() => window.setProgressBarProgress(0.5), 1000); // Example update after 1s
+            }
+        }
+        // Import THREE.js core and addons using relative paths
+        import * as THREE from './js/three/three.module.js'; // Adjusted path
+        import { EffectComposer } from './js/three/addons/postprocessing/EffectComposer.js'; // Adjusted path
+        import { RenderPass } from './js/three/addons/postprocessing/RenderPass.js'; // Adjusted path
+        import { ShaderPass } from './js/three/addons/postprocessing/ShaderPass.js'; // Adjusted path
+        import { UnrealBloomPass } from './js/three/addons/postprocessing/UnrealBloomPass.js'; // Adjusted path
+        // Assuming OrbitControls is needed for camera interaction, add it too
+        import { OrbitControls } from './js/three/addons/controls/OrbitControls.js'; // Added OrbitControls
+
+        let scene, camera, renderer, composer, clock, controls; // Added controls
+        let progressBarGroup; // Group to hold the bar segments
+        const segmentCount = 20; // Number of segments in the bar
+        const segmentWidth = 0.05; // Adjusted width for better spacing
+        const segmentSpacing = 0.02; // Spacing between segments
+        const totalBarWidth = segmentCount * (segmentWidth + segmentSpacing) - segmentSpacing; // Calculate total width
+
+        const amberColor = new THREE.Color(0xFFBF00); // Amber color
+        const offColor = new THREE.Color(0x332200); // Dim amber for off segments
+
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 1000); // Reduced FOV, adjusted near plane
+            // Position camera further back to see the whole bar
+            camera.position.set(0, 0.5, 0.1); // Moved camera even closer
+            camera.lookAt(0, 0, 0); // Look at the center
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio); // For sharper visuals
+            document.body.appendChild(renderer.domElement);
+
+            // Clock for animation timing
+            clock = new THREE.Clock();
+
+            // Progress Bar Segments
+            progressBarGroup = new THREE.Group();
+            const segmentGeometry = new THREE.BoxGeometry(segmentWidth, 0.2, 0.1); // Adjusted segment dimensions
+
+            for (let i = 0; i < segmentCount; i++) {
+                // Use MeshStandardMaterial for better lighting effects
+                const material = new THREE.MeshStandardMaterial({
+                    color: offColor,
+                    emissive: offColor, // Start with off color
+                    emissiveIntensity: 1.0 // Full intensity for emissive
+                });
+                const segment = new THREE.Mesh(segmentGeometry, material);
+                // Calculate position based on index and spacing
+                segment.position.x = (i - (segmentCount - 1) / 2) * (segmentWidth + segmentSpacing);
+                progressBarGroup.add(segment);
+            }
+            scene.add(progressBarGroup);
+
+            // Center the progress bar group
+            progressBarGroup.position.x = 0; // Center horizontally
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1).normalize();
+            scene.add(directionalLight);
+
+            // Post-processing Composer
+            composer = new EffectComposer(renderer);
+            const renderPass = new RenderPass(scene, camera);
+            composer.addPass(renderPass);
+
+            // Bloom Pass for glow effect
+            const bloomPass = new UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                1.0, // strength
+                0.8, // radius - Increased radius for softer bloom
+                0.1 // threshold - Lower threshold to catch more bright areas
+            );
+            composer.addPass(bloomPass);
+
+            // If no CRT pass, set the bloom pass to render to screen
+            bloomPass.renderToScreen = true;
+
+            // Orbit Controls for camera interaction
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; // Smooth camera movement
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 0.1; // Allow camera to get closer
+            controls.maxDistance = 10;
+            controls.maxPolarAngle = Math.PI / 2; // Limit vertical rotation
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize, false);
+
+            // Start the animation loop
+            animate();
+
+            // Notify GJS that the JS environment is ready
+            notifyGjsReady(); // Call this after everything is set up
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight); // Resize composer
+            // Update shader resolution if needed
+            // if (crtPass) {
+            //     crtPass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+            // }
+        }
+
+        function updateProgressBar(progress) {
+            const segmentsToShow = Math.round(progress * segmentCount);
+
+            progressBarGroup.children.forEach((segment, index) => {
+                const isOn = index < segmentsToShow;
+                // Use the colors passed from GJS
+                segment.material.color.set(isOn ? window.barColor : window.offColor);
+                segment.material.emissive.set(isOn ? window.barColor : window.offColor); // Match emissive color
+                // Adjust emissive intensity for a glow effect
+                segment.material.emissiveIntensity = isOn ? 1.0 : 0.2;
+                segment.material.emissiveIntensity = isOn ? 1.0 : 0.2;
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Progress update is now handled by setProgressBarProgress
+
+            // Update controls if using OrbitControls
+            controls.update();
+
+            // Render the scene through the composer
+            composer.render();
+        }
+
+        // Initialize the scene
+        init();
+
+        // Expose a function for external control (like from GJS)
+        window.setProgressBarProgress = (progress, barColor = '#ffcc00', offColor = '#333333') => {
+            // Store colors globally for updateProgressBar to access
+            window.barColor = barColor;
+            window.offColor = offColor;
+            updateProgressBar(progress);
+        };
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk+" version="3.20"/>
+  <template class="ProgressBarWindow" parent="GtkApplicationWindow">
+    <property name="title" translatable="yes">GJS 3D Progress Bar</property>
+    <property name="default-width">800</property>
+    <property name="default-height">250</property>
+    <child>
+      <!-- Use a Grid for more precise layout control -->
+      <object class="GtkGrid" id="mainGrid">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="row_spacing">6</property>
+        <property name="margin">6</property>
+        <!-- Widgets (WebView, Scale) will be added programmatically here -->
+        <!-- Comment out the Slider - will be created programmatically -->
+        <!--
+        <child>
+          <object class="GtkScale" id="progressSlider">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="orientation">horizontal</property>
+            <property name="hexpand">True</property>
+            <property name="draw_value">True</property>
+            <property name="round_digits">1</property>
+            <property name="value_pos">left</property>
+            <property name="adjustment">
+              <object class="GtkAdjustment">
+                <property name="lower">0</property>
+                <property name="upper">100</property>
+                <property name="value">75</property>
+                <property name="step_increment">1</property>
+                <property name="page_increment">10</property>
+              </object>
+            </property>
+            <layout>
+              <property name="column">0</property>
+              <property name="row">1</property>
+              <property name="vexpand">False</property>
+            </layout>
+          </object>
+        </child>
+        -->
+      </object>
+    </child>
+  </template>
+</interface>
