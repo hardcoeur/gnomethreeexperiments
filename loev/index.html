@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>SimplyLoev Viewer</title>
+    <style>
+        body { margin: 0; overflow: hidden; } /* Remove default margin and hide scrollbars */
+        canvas { display: block; } /* Prevent scrollbars caused by canvas */
+    </style>
+</head>
+<body>
+    <!-- Import three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.163.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <!-- Our viewer script -->
+    <script type="module" src="viewer.js"></script>
+</body>
+</html>
